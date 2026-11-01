@@ -40,7 +40,16 @@ jobs:
         with:
           workspaces: macos
       - name: Build release
-        run: cargo build --release
+        run: |
+          set +e
+          cargo build --release 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            # Publish the compiler errors as a public annotation (readable without logging in).
+            msg=$(grep -A8 -E '^error' build.log | head -c 40000 | sed 's/%/%25/g' | tr -d '\r' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=cargo build errors::$msg"
+          fi
+          exit $code
       - name: Bundle .app
         run: |
           chmod +x scripts/bundle-app.sh
