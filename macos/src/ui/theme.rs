@@ -201,7 +201,6 @@ pub fn install_fonts(ctx: &Context) {
 }
 
 pub fn apply(ctx: &Context, p: &Palette) {
-    let mut style = (*ctx.style()).clone();
     let mut v = if p.dark {
         Visuals::dark()
     } else {
@@ -242,10 +241,11 @@ pub fn apply(ctx: &Context, p: &Palette) {
     v.widgets.active.bg_fill = p.accent;
     v.widgets.active.fg_stroke = Stroke::new(1.0, p.on_accent);
 
-    style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-    style.spacing.scroll = egui::style::ScrollStyle::floating();
-    style.spacing.scroll.bar_width = 6.0;
-    style.spacing.scroll.floating_width = 6.0;
-    style.visuals = v;
-    ctx.set_style(style);
+    ctx.all_styles_mut(|style| {
+        style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        style.spacing.scroll = egui::style::ScrollStyle::floating();
+        style.spacing.scroll.bar_width = 6.0;
+        style.spacing.scroll.floating_width = 6.0;
+        style.visuals = v.clone();
+    });
 }
