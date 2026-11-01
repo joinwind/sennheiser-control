@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo test --workspace
+      - name: Build release
+        run: cargo build --release -p app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sennheiser-control-windows
+          path: target/release/*.exe
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: macos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: macos
+      - name: Build release
+        run: cargo build --release
+      - name: Bundle .app
+        run: |
+          chmod +x scripts/bundle-app.sh
+          ./scripts/bundle-app.sh || true
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sennheiser-control-macos
+          path: |
+            macos/target/release/sennheiser-control
+            macos/**/*.app
+          if-no-files-found: warn
+
