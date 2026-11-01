@@ -8,6 +8,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # The repo's rust-toolchain.toml pins a Windows host triple, which the runners' rustup rejects.
+  RUSTUP_TOOLCHAIN: stable
 
 jobs:
   windows:
