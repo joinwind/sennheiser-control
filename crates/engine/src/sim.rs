@@ -86,6 +86,7 @@ impl SimHeadset {
             .unwrap_or(76);
         p.insert(sn::BATTERY_LEVEL_GET, prop(None, &[battery], 0));
         p.insert(sn::CHARGING_STATE_GET, prop(None, &[0, 0], 0));
+        p.insert(sn::TIMER_GET, prop(None, &[0, 0x03, 0x84], 0));
         p.insert(sn::CODEC_GET, prop(None, &[8], 0));
         p.insert(sn::SAMPLE_RATE_GET, prop(None, &[0, 0, 0xBB, 0x80], 0));
         // HC_SIM_NOISE=custom|off starts in that noise mode instead of adaptive
@@ -212,10 +213,19 @@ impl SimHeadset {
                 self.dump_feature(f);
             }
             sn::TIMER_GET => match d.first() {
-                Some(0) => self.respond(id, vec![0, 0x03, 0x84]),
+                Some(0) => {
+                    let v = self.props.lock()[&sn::TIMER_GET].value.clone();
+                    self.respond(id, v);
+                }
                 _ => self.error(VENDOR_SENNHEISER, id, 5),
             },
-            sn::TIMER_SET => self.respond(id, vec![]),
+            sn::TIMER_SET => match d {
+                [0, hi, lo] => {
+                    self.props.lock().get_mut(&sn::TIMER_GET).unwrap().value = vec![0, *hi, *lo];
+                    self.respond(id, vec![]);
+                }
+                _ => self.error(VENDOR_SENNHEISER, id, 5),
+            },
             sn::EQ2_SLIDER_GET => match d
                 .first()
                 .and_then(|&b| self.sliders.lock().get(b as usize).copied())

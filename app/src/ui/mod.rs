@@ -56,6 +56,7 @@ pub struct HeadsetApp {
     settings: Settings,
     settings_version: u64,
     palette: Palette,
+    theme_applied: bool,
     autostart: bool,
     transparency: Option<Pending<f32>>,
     eq_bands: Option<Pending<[f32; protocol::eq::BANDS]>>,
@@ -95,6 +96,7 @@ impl HeadsetApp {
             state_version: u64::MAX,
             settings_version: shared.settings_version(),
             palette: Palette::DARK,
+            theme_applied: false,
             autostart: crate::platform::autostart_enabled(),
             shared,
             rx,
@@ -210,8 +212,9 @@ impl HeadsetApp {
             ThemePref::System => !crate::platform::apps_are_light(),
         };
         let p = if dark { Palette::DARK } else { Palette::LIGHT };
-        if p != self.palette || self.state_version == 0 {
+        if p != self.palette || !self.theme_applied {
             self.palette = p;
+            self.theme_applied = true;
             theme::apply(ctx, &p);
         }
         // drop local edits once the device caught up or the grace period expired

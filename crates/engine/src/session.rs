@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender, select, unbounded};
 use parking_lot::Mutex;
@@ -115,7 +115,6 @@ struct Worker {
     caps: Capabilities,
 }
 
-const BATTERY_POLL: Duration = Duration::from_secs(300);
 const MAX_CONSECUTIVE_TIMEOUTS: u32 = 3;
 
 impl Worker {
@@ -337,7 +336,6 @@ impl Worker {
     }
 
     fn job_loop(&self, client: &Client) -> Option<String> {
-        let mut next_poll = Instant::now() + BATTERY_POLL;
         loop {
             if self.stop.load(Ordering::SeqCst) || client.is_closed() {
                 return Some("link closed".into());
@@ -357,12 +355,6 @@ impl Worker {
                 && let Err(reason) = self.execute(client, &reqs)
             {
                 return reason;
-            }
-            if Instant::now() >= next_poll {
-                next_poll = Instant::now() + BATTERY_POLL;
-                if let Err(reason) = self.execute(client, &[Request::Battery, Request::Charging]) {
-                    return reason;
-                }
             }
         }
     }

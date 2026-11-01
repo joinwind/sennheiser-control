@@ -1,0 +1,37 @@
+[package]
+name = "sennheiser-control-macos"
+version = "0.3.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "sennheiser-control"
+path = "src/main.rs"
+
+[dependencies]
+protocol = { path = "../crates/protocol" }
+bluetooth = { path = "../crates/bluetooth" }
+engine = { path = "../crates/engine" }
+eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "accesskit"] }
+egui = "0.36"
+egui-phosphor = "0.14"
+tray-icon = "0.26"
+raw-window-handle = "0.6"
+tiny-skia = "0.12"
+ab_glyph = "0.2"
+crossbeam-channel = "0.5"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+parking_lot = "0.12"
+
+
+# Standalone workspace: the macOS app is built on its own, apart from the Windows workspace.
+[workspace]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = 3

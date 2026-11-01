@@ -97,6 +97,8 @@ struct Actor {
     error_until: Option<Instant>,
     /// Next periodic battery read while connected.
     next_battery_poll: Instant,
+    /// Last EQ band gains queued for the session, used as the diff baseline while in flight.
+    pending_eq: Option<[f32; protocol::eq::BANDS]>,
 }
 
 impl Actor {
@@ -122,6 +124,7 @@ impl Actor {
             session_rx,
             error_until: None,
             next_battery_poll: Instant::now() + BATTERY_POLL,
+            pending_eq: None,
         }
     }
 
@@ -257,17 +260,33 @@ impl Actor {
                 for u in &ups {
                     hs.apply(u);
                 }
+                if let Some(p) = self.pending_eq
+                    && hs.eq.known
+                    && hs
+                        .eq
+                        .bands
+                        .iter()
+                        .zip(p)
+                        .all(|(a, b)| protocol::eq::gen2_units(*a) == protocol::eq::gen2_units(b))
+                {
+                    self.pending_eq = None;
+                }
             }
-            SessionEvent::CommandFailed(msg) => self.flash_error(msg),
+            SessionEvent::CommandFailed(msg) => {
+                self.pending_eq = None;
+                self.flash_error(msg);
+            }
             SessionEvent::Failed(msg) => {
                 log::warn!("session failed: {msg}");
                 self.session = None;
+                self.pending_eq = None;
                 self.schedule_retry(msg);
             }
             SessionEvent::Ended(reason) => {
                 log::info!("session ended: {reason:?}");
                 self.session = None;
                 self.state.headset = None;
+                self.pending_eq = None;
                 self.attempts = 0;
                 self.schedule_retry(reason.unwrap_or_else(|| "disconnected".into()));
             }
@@ -362,6 +381,7 @@ impl Actor {
             s.stop();
         }
         self.state.headset = None;
+        self.pending_eq = None;
     }
 
     fn publish(&mut self) {
@@ -393,7 +413,24 @@ impl Actor {
         let Some(hs) = self.state.headset.as_ref() else {
             return;
         };
-        let (reqs, priority) = plan(&a, hs);
+        let effective;
+        let hs_ref = if let Some(bands) = self.pending_eq {
+            let mut cloned = hs.clone();
+            cloned.eq.bands = bands;
+            cloned.eq.known = true;
+            effective = cloned;
+            &effective
+        } else {
+            hs
+        };
+        let (reqs, priority) = plan(&a, hs_ref);
+        if let Action::SetEqBands(bands) = a
+            && hs.caps.eq != EqGen::Unsupported
+        {
+            self.pending_eq = Some(bands);
+        } else if matches!(a, Action::FactoryReset | Action::Refresh) {
+            self.pending_eq = None;
+        }
         session.submit(reqs, priority);
     }
 }

@@ -10,9 +10,11 @@ protocol.workspace = true
 thiserror.workspace = true
 log.workspace = true
 crossbeam-channel.workspace = true
+
+[target.'cfg(windows)'.dependencies]
 windows-collections = "0.3"
 
-[dependencies.windows]
+[target.'cfg(windows)'.dependencies.windows]
 version = "0.62"
 features = [
     "Foundation",

@@ -60,26 +60,29 @@ fn connects_syncs_and_applies_actions() {
         s.live().is_some_and(|h| h.anti_wind == Some(AntiWind::Max))
     });
 
-    // a burst of slider drags is coalesced; the final values win
+    // a burst of slider drags (including reverting a band back to its starting gain) is coalesced; final values win
     for i in 0..=30 {
         engine.dispatch(Action::SetEqBands([i as f32 / 10.0, 0.0, -1.5, 0.0, 6.0]));
     }
+    engine.dispatch(Action::SetEqBands([3.5, 0.0, -1.5, 0.0, 6.0]));
     engine.dispatch(Action::SetBassBoost(true));
     wait(&engine, "eq", |s| {
         s.live().is_some_and(|h| {
-            h.eq.bands == [3.0, 0.0, -1.5, 0.0, 6.0] && h.eq.bass_boost && h.eq_active()
+            h.eq.bands == [3.5, 0.0, -1.5, 0.0, 6.0] && h.eq.bass_boost && h.eq_active()
         })
     });
 
     engine.dispatch(Action::SetSidetone(4));
     engine.dispatch(Action::SetPodcast(true));
     engine.dispatch(Action::SetAutoOff(1800));
+    engine.dispatch(Action::SetOnHeadDetection(false));
     engine.dispatch(Action::SetTouchLock(true));
     wait(&engine, "settings", |s| {
         s.live().is_some_and(|h| {
             h.sidetone == Some(4)
                 && h.podcast()
                 && h.auto_off_seconds == Some(1800)
+                && h.on_head_detection == Some(false)
                 && h.touch_lock == Some(true)
         })
     });
